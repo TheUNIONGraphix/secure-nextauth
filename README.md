@@ -55,7 +55,7 @@ export const options: NextAuthOptions = {
       },
       async authorize(credentials) {
         // Your authentication logic here
-        const response = await fetch('http://43.202.186.195:8080/api/login', {
+        const response = await fetch('https://your-api.com/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
