@@ -1,6 +1,6 @@
 {
   "name": "@theuniongraphix/secure-nextauth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A secure NextAuth wrapper that prevents session data exposure on the client side",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
