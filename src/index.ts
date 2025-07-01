@@ -6,7 +6,7 @@ export { useAuthStatus } from './hooks/useAuthStatus';
 export { SecureSessionProvider } from './provider/SecureSessionProvider';
 
 // Utils
-export { getAuthStatus, createAuthStatusResponse, requireAuth } from './utils/authHelpers';
+export { getAuthStatus, createAuthStatusResponse, requireAuth, requireAuthOrRedirect, createAuthMiddleware } from './utils/authHelpers';
 
 // Types
 export type {

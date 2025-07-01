@@ -1,17 +1,16 @@
 {
-  "name": "@theuniongraphix/secure-nextauth",
-  "version": "1.0.4",
+  "name": "nextauth-secure",
+  "version": "1.0.1",
   "description": "A secure NextAuth wrapper that prevents session data exposure on the client side",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
-  "type": "module",
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
+    "build": "rollup -c --bundleConfigAsCjs",
+    "dev": "rollup -c --bundleConfigAsCjs -w",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

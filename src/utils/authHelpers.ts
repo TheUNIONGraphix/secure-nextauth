@@ -1,5 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { NextAuthOptions } from 'next-auth';
+import { redirect } from 'next/navigation';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Server-side helper to get authentication status
@@ -40,4 +42,58 @@ export function requireAuth(isAuthenticated: boolean, redirectUrl?: string) {
     throw new Error('Authentication required');
   }
   return null;
+}
+
+/**
+ * Server component helper that automatically redirects if not authenticated
+ */
+export async function requireAuthOrRedirect(
+  options: NextAuthOptions,
+  redirectTo: string = '/signin'
+): Promise<void> {
+  const isAuthenticated = await getAuthStatus(options);
+  if (!isAuthenticated) {
+    redirect(redirectTo);
+  }
+}
+
+/**
+ * Creates a middleware function for protecting routes
+ */
+export function createAuthMiddleware(
+  protectedPaths: string[],
+  loginPath: string = '/signin'
+) {
+  return async function middleware(request: NextRequest) {
+    const { pathname } = request.nextUrl;
+    
+    // Check if the current path should be protected
+    const isProtectedPath = protectedPaths.some(path => 
+      pathname.startsWith(path) || pathname === path
+    );
+    
+    if (!isProtectedPath) {
+      return NextResponse.next();
+    }
+
+    // Check authentication status by calling the auth status API
+    try {
+      const authResponse = await fetch(new URL('/api/auth/status', request.url));
+      const { isAuthenticated } = await authResponse.json();
+
+      if (!isAuthenticated) {
+        const loginUrl = new URL(loginPath, request.url);
+        loginUrl.searchParams.set('callbackUrl', pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+    } catch (error) {
+      console.error('Auth middleware error:', error);
+      // If we can't check auth status, redirect to login for security
+      const loginUrl = new URL(loginPath, request.url);
+      loginUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    return NextResponse.next();
+  };
 }

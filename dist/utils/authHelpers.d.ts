@@ -1,4 +1,5 @@
 import { NextAuthOptions } from 'next-auth';
+import { NextRequest, NextResponse } from 'next/server';
 /**
  * Server-side helper to get authentication status
  * This should be used in your API route or server components
@@ -19,3 +20,11 @@ export declare function requireAuth(isAuthenticated: boolean, redirectUrl?: stri
         permanent: boolean;
     };
 } | null;
+/**
+ * Server component helper that automatically redirects if not authenticated
+ */
+export declare function requireAuthOrRedirect(options: NextAuthOptions, redirectTo?: string): Promise<void>;
+/**
+ * Creates a middleware function for protecting routes
+ */
+export declare function createAuthMiddleware(protectedPaths: string[], loginPath?: string): (request: NextRequest) => Promise<NextResponse<unknown>>;

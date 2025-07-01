@@ -2,7 +2,7 @@
 
 A secure NextAuth wrapper that prevents session data exposure on the client side while maintaining authentication state management.
 
-[![npm version](https://badge.fury.io/js/@theuniongraphix%2Fsecure-nextauth.svg)](https://www.npmjs.com/package/@theuniongraphix/secure-nextauth)
+[![npm version](https://badge.fury.io/js/nextauth-secure.svg)](https://www.npmjs.com/package/nextauth-secure)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚨 The Problem
@@ -23,15 +23,15 @@ This library provides a secure wrapper that:
 ## 📦 Installation
 
 ```bash
-npm install @theuniongraphix/secure-nextauth next-auth
+npm install nextauth-secure next-auth
 ```
 
 ```bash
-yarn add @theuniongraphix/secure-nextauth next-auth
+yarn add nextauth-secure next-auth
 ```
 
 ```bash
-pnpm add @theuniongraphix/secure-nextauth next-auth
+pnpm add nextauth-secure next-auth
 ```
 
 ## 🚀 Quick Start
@@ -109,7 +109,7 @@ export async function GET() {
 ```typescript
 // app/layout.tsx
 import { getServerSession } from 'next-auth';
-import { SecureSessionProvider } from '@theuniongraphix/secure-nextauth';
+import { SecureSessionProvider } from 'nextauth-secure';
 import { options } from './api/auth/[...nextauth]/options';
 
 export default async function RootLayout({
@@ -137,7 +137,7 @@ export default async function RootLayout({
 ```typescript
 // components/Navbar.tsx
 'use client';
-import { useSecureSession } from '@theuniongraphix/secure-nextauth';
+import { useSecureSession } from 'nextauth-secure';
 import { signOut } from 'next-auth/react';
 
 export function Navbar() {
@@ -158,7 +158,7 @@ export function Navbar() {
 
 ```typescript
 // app/dashboard/page.tsx
-import { requireAuthOrRedirect } from '@theuniongraphix/secure-nextauth';
+import { requireAuthOrRedirect } from 'nextauth-secure';
 import { options } from '@/app/api/auth/[...nextauth]/options';
 
 export default async function Dashboard() {
@@ -180,7 +180,7 @@ Protect multiple routes with middleware:
 
 ```typescript
 // middleware.ts
-import { createAuthMiddleware } from '@theuniongraphix/secure-nextauth';
+import { createAuthMiddleware } from 'nextauth-secure';
 
 export default createAuthMiddleware([
   '/dashboard',
@@ -270,7 +270,7 @@ export default function SignIn() {
 ```typescript
 // components/UserProfile.tsx
 'use client';
-import { useSecureSession, useAuthStatus } from '@theuniongraphix/secure-nextauth';
+import { useSecureSession, useAuthStatus } from 'nextauth-secure';
 
 export function UserProfile() {
   const { isAuthenticated } = useSecureSession();
@@ -383,7 +383,7 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
-- [NPM Package](https://www.npmjs.com/package/@theuniongraphix/secure-nextauth)
+- [NPM Package](https://www.npmjs.com/package/nextauth-secure)
 - [GitHub Repository](https://github.com/TheUNIONGraphix/secure-nextauth)
 - [NextAuth.js Documentation](https://next-auth.js.org/)
 
