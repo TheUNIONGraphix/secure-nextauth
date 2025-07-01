@@ -1,6 +1,6 @@
 {
   "name": "nextauth-secure",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A secure NextAuth wrapper that prevents session data exposure on the client side",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
