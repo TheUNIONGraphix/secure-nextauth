@@ -1,14 +1,39 @@
 {
-  "name": "secure-nextauth-lib",
+  "name": "@theuniongraphix/secure-nextauth",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A secure NextAuth wrapper that prevents session data exposure on the client side",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "nextauth",
+    "security",
+    "authentication",
+    "react",
+    "nextjs",
+    "session",
+    "context"
+  ],
+  "author": "TheUNIONGraphix",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheUNIONGraphix/secure-nextauth.git"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0",
+    "next-auth": ">=4.0.0"
+  },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^16.0.1",
@@ -20,10 +45,5 @@
     "rollup-plugin-peer-deps-external": "^2.2.4",
     "tslib": "^2.8.1",
     "typescript": "^5.8.3"
-  },
-  "peerDependencies": {
-    "next-auth": "^4.24.11",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
   }
 }
