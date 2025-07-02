@@ -1,6 +1,5 @@
-'use client';
-
-import { useState, useEffect } from 'react';
+"use client";
+import React, { useState, useEffect } from "react";
 import { AuthStatusResponse, SecureNextAuthConfig } from '../types';
 
 export function useAuthStatus(config?: SecureNextAuthConfig) {

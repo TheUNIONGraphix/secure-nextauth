@@ -1,6 +1,5 @@
-'use client';
-
-import { createContext, useContext } from 'react';
+"use client";
+import React, { createContext, useContext } from "react";
 import { SecureSessionContextType } from '../types';
 
 export const SecureSessionContext = createContext<SecureSessionContextType>({

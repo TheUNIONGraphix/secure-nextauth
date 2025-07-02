@@ -5,6 +5,20 @@ A secure NextAuth wrapper that prevents session data exposure on the client side
 [![npm version](https://badge.fury.io/js/nextauth-secure.svg)](https://www.npmjs.com/package/nextauth-secure)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+---
+
+## 🚀 React 19 & Next.js 15 지원
+
+- 본 라이브러리는 React 18~19, Next.js 14~15 환경에서 테스트 및 호환성을 확보했습니다.
+- peerDependencies: `react@^18.0.0 <20.0.0`, `next@^14.0.0 <16.0.0`
+- 설치 예시:
+
+```bash
+npm install nextauth-secure next-auth
+```
+
+---
+
 ## 🚨 The Problem
 
 NextAuth by default exposes session data to the client side, which can be a **security vulnerability**. Even if you don't use `useSession`, just having the SessionProvider configured will expose session information to the client.
