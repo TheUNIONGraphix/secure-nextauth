@@ -1,6 +1,6 @@
 {
   "name": "nextauth-secure",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A lightweight NextAuth wrapper with React 19/Next.js 15 compatibility - no Context, no Provider, just hooks and utilities",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
@@ -11,7 +11,11 @@
   "scripts": {
     "build": "rollup -c --bundleConfigAsCjs",
     "dev": "rollup -c --bundleConfigAsCjs -w",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "setup": "node bin/setup.js"
+  },
+  "bin": {
+    "nextauth-secure-setup": "./bin/setup.js"
   },
   "keywords": [
     "nextauth",

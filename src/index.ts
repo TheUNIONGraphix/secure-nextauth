@@ -11,6 +11,9 @@ export {
   createAuthMiddleware 
 } from './utils/serverHelpers';
 
+// Auto setup utilities
+export { autoSetup, generateAuthStatusAPI, generateAuthStatusComponent } from './utils/autoSetup';
+
 // Types
 export type { 
   AuthStatusResponse, 
