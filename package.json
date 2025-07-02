@@ -1,6 +1,6 @@
 {
   "name": "nextauth-secure",
-  "version": "2.3.1",
+  "version": "2.3.0",
   "description": "A lightweight NextAuth wrapper with React 19/Next.js 15 compatibility - no Context, no Provider, just hooks and utilities",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
