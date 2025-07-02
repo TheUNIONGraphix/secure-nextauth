@@ -1,172 +1,252 @@
-import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
-import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-/**
- * Server-side helper to get authentication status
- * This should be used in your API route or server components
- */
-async function getAuthStatus(options) {
-    try {
-        const session = await getServerSession(options);
-        return !!(session === null || session === void 0 ? void 0 : session.user);
-    }
-    catch (error) {
-        console.error('Error checking auth status:', error);
-        return false;
-    }
-}
-/**
- * Helper to create a standardized auth status API response
- */
-function createAuthStatusResponse(isAuthenticated) {
+function detectProjectStructure(projectRoot) {
+    const hasSrc = fs.existsSync(path.join(projectRoot, 'src'));
+    const hasAppInSrc = hasSrc && fs.existsSync(path.join(projectRoot, 'src', 'app'));
+    const hasAppInRoot = fs.existsSync(path.join(projectRoot, 'app'));
     return {
-        isAuthenticated,
+        hasSrc,
+        hasAppInSrc,
+        hasAppInRoot,
+        useSrc: hasSrc && (hasAppInSrc || !hasAppInRoot)
     };
 }
-/**
- * Middleware helper to check if user is authenticated
- */
-function requireAuth(isAuthenticated, redirectUrl) {
-    if (!isAuthenticated) {
-        if (redirectUrl) {
-            return {
-                redirect: {
-                    destination: redirectUrl,
-                    permanent: false,
-                },
-            };
-        }
-        throw new Error('Authentication required');
-    }
-    return null;
-}
-/**
- * Server component helper that automatically redirects if not authenticated
- */
-async function requireAuthOrRedirect(options, redirectTo = '/signin') {
-    const isAuthenticated = await getAuthStatus(options);
-    if (!isAuthenticated) {
-        redirect(redirectTo);
-    }
-}
-/**
- * Creates a middleware function for protecting routes
- */
-function createAuthMiddleware(protectedPaths, loginPath = '/signin') {
-    return async function middleware(request) {
-        const { pathname } = request.nextUrl;
-        // Check if the current path should be protected
-        const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path) || pathname === path);
-        if (!isProtectedPath) {
-            return NextResponse.next();
-        }
-        // Check authentication status by calling the auth status API
-        try {
-            const authResponse = await fetch(new URL('/api/auth/status', request.url));
-            if (!authResponse.ok) {
-                throw new Error(`Auth API error: ${authResponse.status}`);
-            }
-            // Check if response is JSON
-            const contentType = authResponse.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Auth API response is not JSON');
-            }
-            let authData;
-            try {
-                authData = await authResponse.json();
-            }
-            catch (jsonError) {
-                throw new Error('Invalid JSON response from auth API');
-            }
-            const { isAuthenticated } = authData;
-            if (!isAuthenticated) {
-                const loginUrl = new URL(loginPath, request.url);
-                loginUrl.searchParams.set('callbackUrl', pathname);
-                return NextResponse.redirect(loginUrl);
-            }
-        }
-        catch (error) {
-            console.error('Auth middleware error:', error);
-            // If we can't check auth status, redirect to login for security
-            const loginUrl = new URL(loginPath, request.url);
-            loginUrl.searchParams.set('callbackUrl', pathname);
-            return NextResponse.redirect(loginUrl);
-        }
-        return NextResponse.next();
-    };
-}
+function generateNextAuthAPI(options = {}) {
+    const { projectRoot = process.cwd(), authOptionsPath = '@/lib/auth' } = options;
+    const structure = detectProjectStructure(projectRoot);
+    const baseDir = structure.useSrc ? 'src' : '';
+    const nextAuthContent = `import NextAuth from 'next-auth';
+import { authOptions } from '${authOptionsPath}';
 
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };
+`;
+    const nextAuthPath = path.join(projectRoot, baseDir, 'app', 'api', 'auth', '[...nextauth]', 'route.ts');
+    const nextAuthDir = path.dirname(nextAuthPath);
+    if (!fs.existsSync(nextAuthDir)) {
+        fs.mkdirSync(nextAuthDir, { recursive: true });
+    }
+    fs.writeFileSync(nextAuthPath, nextAuthContent);
+    return nextAuthPath;
+}
+function generateAuthOptions(options = {}) {
+    const { projectRoot = process.cwd(), authOptionsPath = '@/lib/auth' } = options;
+    const structure = detectProjectStructure(projectRoot);
+    const baseDir = structure.useSrc ? 'src' : '';
+    const authOptionsContent = `import { NextAuthOptions } from 'next-auth';
+import GoogleProvider from 'next-auth/providers/google';
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+  ],
+  session: {
+    strategy: 'jwt',
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+  },
+};
+`;
+    const libPath = path.join(projectRoot, baseDir, 'lib');
+    const authOptionsFilePath = path.join(libPath, 'auth.ts');
+    if (!fs.existsSync(libPath)) {
+        fs.mkdirSync(libPath, { recursive: true });
+    }
+    fs.writeFileSync(authOptionsFilePath, authOptionsContent);
+    return authOptionsFilePath;
+}
 function generateAuthStatusAPI(options = {}) {
-    const { projectRoot = process.cwd(), apiRoute = '/api/auth/status', authOptionsPath = '@/lib/auth' } = options;
-    const apiContent = `import { getAuthStatus, createAuthStatusResponse } from 'nextauth-secure';
+    const { projectRoot = process.cwd(), authOptionsPath = '@/lib/auth' } = options;
+    const structure = detectProjectStructure(projectRoot);
+    const baseDir = structure.useSrc ? 'src' : '';
+    const authStatusContent = `import { getServerSession } from 'next-auth';
 import { authOptions } from '${authOptionsPath}';
 
 export async function GET() {
   try {
-    const isAuthenticated = await getAuthStatus(authOptions);
-    const response = createAuthStatusResponse(isAuthenticated);
+    const session = await getServerSession(authOptions);
+    const isAuthenticated = !!session?.user;
     
-    return Response.json(response);
+    return Response.json({ isAuthenticated });
   } catch (error) {
-    console.error('Auth status API error:', error);
+    console.error('Auth status check failed:', error);
     return Response.json({ isAuthenticated: false }, { status: 500 });
   }
 }
 `;
-    const apiPath = path.join(projectRoot, 'app', apiRoute.replace('/api/', ''), 'route.ts');
-    const apiDir = path.dirname(apiPath);
-    // 디렉토리 생성
-    if (!fs.existsSync(apiDir)) {
-        fs.mkdirSync(apiDir, { recursive: true });
+    const authStatusPath = path.join(projectRoot, baseDir, 'app', 'api', 'auth', 'status', 'route.ts');
+    const authStatusDir = path.dirname(authStatusPath);
+    if (!fs.existsSync(authStatusDir)) {
+        fs.mkdirSync(authStatusDir, { recursive: true });
     }
-    // API 파일 생성
-    fs.writeFileSync(apiPath, apiContent);
-    return apiPath;
+    fs.writeFileSync(authStatusPath, authStatusContent);
+    return authStatusPath;
 }
-function generateAuthStatusComponent(options = {}) {
-    const { projectRoot = process.cwd(), componentName = 'AuthStatus' } = options;
-    const componentContent = `"use client";
-import { useAuthStatus } from 'nextauth-secure';
+function generateSessionContext(options = {}) {
+    const { projectRoot = process.cwd() } = options;
+    const structure = detectProjectStructure(projectRoot);
+    const baseDir = structure.useSrc ? 'src' : '';
+    const contextContent = `"use client";
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export function ${componentName}() {
-  const { isAuthenticated, isLoading, error } = useAuthStatus();
+interface SessionContextType {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+}
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+const SessionContext = createContext<SessionContextType | undefined>(undefined);
+
+export const useSession = (): SessionContextType => {
+  const context = useContext(SessionContext);
+  if (context === undefined) {
+    throw new Error('useSession must be used within a SessionContextProvider');
+  }
+  return context;
+};
+
+export { SessionContext };
+`;
+    const contextPath = path.join(projectRoot, baseDir, 'context', 'SessionContext.tsx');
+    const contextDir = path.dirname(contextPath);
+    if (!fs.existsSync(contextDir)) {
+        fs.mkdirSync(contextDir, { recursive: true });
+    }
+    fs.writeFileSync(contextPath, contextContent);
+    return contextPath;
+}
+function generateSessionProvider(options = {}) {
+    const { projectRoot = process.cwd() } = options;
+    const structure = detectProjectStructure(projectRoot);
+    const baseDir = structure.useSrc ? 'src' : '';
+    const providerContent = `"use client";
+import React, { useState, useEffect } from 'react';
+import { SessionContext } from '../context/SessionContext';
+
+interface SessionContextProviderProps {
+  children: React.ReactNode;
+}
+
+export function SessionContextProvider({ children }: SessionContextProviderProps) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // 인증 상태 확인
+  const checkAuthStatus = async () => {
+    try {
+      const response = await fetch('/api/auth/status');
+      if (response.ok) {
+        const data = await response.json();
+        setIsAuthenticated(data.isAuthenticated);
+      }
+    } catch (error) {
+      console.error('Auth status check failed:', error);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 로그인 함수
+  const login = async () => {
+    try {
+      window.location.href = '/api/auth/signin';
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
+  };
+
+  // 로그아웃 함수
+  const logout = async () => {
+    try {
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+      });
+      if (response.ok) {
+        setIsAuthenticated(false);
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const value = {
+    isAuthenticated,
+    isLoading,
+    login,
+    logout,
+  };
 
   return (
-    <div>
-      {isAuthenticated ? 'Authenticated' : 'Not authenticated'}
-    </div>
+    <SessionContext.Provider value={value}>
+      {children}
+    </SessionContext.Provider>
   );
 }
 `;
-    const componentPath = path.join(projectRoot, 'app', 'components', `${componentName}.tsx`);
-    const componentDir = path.dirname(componentPath);
-    // 디렉토리 생성
-    if (!fs.existsSync(componentDir)) {
-        fs.mkdirSync(componentDir, { recursive: true });
+    const providerPath = path.join(projectRoot, baseDir, 'provider', 'SessionContextProvider.tsx');
+    const providerDir = path.dirname(providerPath);
+    if (!fs.existsSync(providerDir)) {
+        fs.mkdirSync(providerDir, { recursive: true });
     }
-    // 컴포넌트 파일 생성
-    fs.writeFileSync(componentPath, componentContent);
-    return componentPath;
+    fs.writeFileSync(providerPath, providerContent);
+    return providerPath;
 }
 function autoSetup(options = {}) {
-    const apiPath = generateAuthStatusAPI(options);
-    const componentPath = generateAuthStatusComponent(options);
+    const structure = detectProjectStructure(options.projectRoot || process.cwd());
+    const nextAuthPath = generateNextAuthAPI(options);
+    const authOptionsPath = generateAuthOptions(options);
+    const authStatusPath = generateAuthStatusAPI(options);
+    const contextPath = generateSessionContext(options);
+    const providerPath = generateSessionProvider(options);
     console.log('✅ Auto setup completed!');
-    console.log(`📁 API route created: ${apiPath}`);
-    console.log(`📁 Component created: ${componentPath}`);
+    console.log(`📁 Project structure: ${structure.useSrc ? 'src/' : ''}app/`);
+    console.log(`📁 NextAuth API: ${nextAuthPath}`);
+    console.log(`📁 Auth options: ${authOptionsPath}`);
+    console.log(`📁 Auth status API: ${authStatusPath}`);
+    console.log(`📁 Session context: ${contextPath}`);
+    console.log(`📁 Session provider: ${providerPath}`);
     console.log('');
     console.log('📝 Next steps:');
-    console.log('1. Import and use the component in your layout or pages');
-    console.log('2. Make sure your authOptions are properly configured');
-    console.log('3. The API route will be available at /api/auth/status');
-    return { apiPath, componentPath };
+    console.log('1. Install dependencies: npm install next-auth');
+    console.log('2. Set up environment variables in .env.local:');
+    console.log('   NEXTAUTH_SECRET=your-secret-here');
+    console.log('   GOOGLE_CLIENT_ID=your-google-client-id');
+    console.log('   GOOGLE_CLIENT_SECRET=your-google-client-secret');
+    console.log('3. Import SessionContextProvider in your layout');
+    console.log('4. Use useSession hook in your components');
+    return {
+        nextAuthPath,
+        authOptionsPath,
+        authStatusPath,
+        contextPath,
+        providerPath
+    };
 }
 
-export { autoSetup, createAuthMiddleware, createAuthStatusResponse, generateAuthStatusAPI, generateAuthStatusComponent, getAuthStatus, requireAuth, requireAuthOrRedirect };
+export { autoSetup };
 //# sourceMappingURL=server.esm.js.map

@@ -1,12 +1,16 @@
 export interface AutoSetupOptions {
     projectRoot?: string;
-    apiRoute?: string;
-    componentName?: string;
     authOptionsPath?: string;
 }
+export declare function generateNextAuthAPI(options?: AutoSetupOptions): string;
+export declare function generateAuthOptions(options?: AutoSetupOptions): string;
 export declare function generateAuthStatusAPI(options?: AutoSetupOptions): string;
-export declare function generateAuthStatusComponent(options?: AutoSetupOptions): string;
+export declare function generateSessionContext(options?: AutoSetupOptions): string;
+export declare function generateSessionProvider(options?: AutoSetupOptions): string;
 export declare function autoSetup(options?: AutoSetupOptions): {
-    apiPath: string;
-    componentPath: string;
+    nextAuthPath: string;
+    authOptionsPath: string;
+    authStatusPath: string;
+    contextPath: string;
+    providerPath: string;
 };

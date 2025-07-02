@@ -1,19 +1,10 @@
 // Client-side exports
-export { useAuthStatus } from './hooks/useAuthStatus';
-export { checkAuthStatus, createAuthStatusEndpoint } from './utils/authHelpers';
-
-// Server-side exports
-export { 
-  getAuthStatus, 
-  createAuthStatusResponse, 
-  requireAuth, 
-  requireAuthOrRedirect, 
-  createAuthMiddleware 
-} from './utils/serverHelpers';
+export { SessionContextProvider } from './provider/SessionContextProvider';
+export { useSession } from './context/SessionContext';
 
 // Types
 export type { 
-  AuthStatusResponse, 
-  SecureNextAuthConfig,
-  AuthHookResult
+  SessionContextType, 
+  SessionContextProviderProps,
+  NextAuthOptions
 } from './types';

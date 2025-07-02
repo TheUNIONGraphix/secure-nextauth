@@ -1,223 +1,75 @@
 'use strict';
 
+var jsxRuntime = require('react/jsx-runtime');
 var react = require('react');
-var nextAuth = require('next-auth');
-var navigation = require('next/navigation');
-var server = require('next/server');
 
-function useAuthStatus(config) {
+const SessionContext = react.createContext(undefined);
+const useSession = () => {
+    const context = react.useContext(SessionContext);
+    if (context === undefined) {
+        throw new Error('useSession must be used within a SessionContextProvider');
+    }
+    return context;
+};
+
+function SessionContextProvider({ children }) {
     const [isAuthenticated, setIsAuthenticated] = react.useState(false);
     const [isLoading, setIsLoading] = react.useState(true);
-    const [error, setError] = react.useState(null);
-    const endpoint = (config === null || config === void 0 ? void 0 : config.authStatusEndpoint) || '/api/auth/status';
+    // 인증 상태 확인
     const checkAuthStatus = async () => {
-        // 서버 사이드에서는 실행하지 않음
-        if (typeof window === 'undefined') {
-            setIsLoading(false);
-            return;
-        }
         try {
-            setIsLoading(true);
-            setError(null);
-            const response = await fetch(endpoint);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            // Check if response is JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Response is not JSON');
-            }
-            let data;
-            try {
-                data = await response.json();
-            }
-            catch (jsonError) {
-                throw new Error('Invalid JSON response');
-            }
-            const newAuthStatus = data.isAuthenticated;
-            setIsAuthenticated(newAuthStatus);
-            // Call the optional callback
-            if (config === null || config === void 0 ? void 0 : config.onAuthChange) {
-                config.onAuthChange(newAuthStatus);
+            const response = await fetch('/api/auth/status');
+            if (response.ok) {
+                const data = await response.json();
+                setIsAuthenticated(data.isAuthenticated);
             }
         }
-        catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Failed to check auth status';
-            setError(errorMessage);
+        catch (error) {
+            console.error('Auth status check failed:', error);
             setIsAuthenticated(false);
         }
         finally {
             setIsLoading(false);
         }
     };
-    react.useEffect(() => {
-        // 클라이언트에서만 실행
-        if (typeof window !== 'undefined') {
-            checkAuthStatus();
+    // 로그인 함수
+    const login = async () => {
+        try {
+            // NextAuth 로그인 페이지로 리다이렉트
+            window.location.href = '/api/auth/signin';
         }
-    }, [endpoint]);
-    return {
+        catch (error) {
+            console.error('Login failed:', error);
+        }
+    };
+    // 로그아웃 함수
+    const logout = async () => {
+        try {
+            const response = await fetch('/api/auth/signout', {
+                method: 'POST',
+            });
+            if (response.ok) {
+                setIsAuthenticated(false);
+                // 로그아웃 후 홈페이지로 리다이렉트
+                window.location.href = '/';
+            }
+        }
+        catch (error) {
+            console.error('Logout failed:', error);
+        }
+    };
+    react.useEffect(() => {
+        checkAuthStatus();
+    }, []);
+    const value = {
         isAuthenticated,
         isLoading,
-        error,
-        refetch: checkAuthStatus,
+        login,
+        logout,
     };
+    return (jsxRuntime.jsx(SessionContext.Provider, { value: value, children: children }));
 }
 
-async function checkAuthStatus(config) {
-    // 서버 사이드에서는 기본값 반환
-    if (typeof window === 'undefined') {
-        return { isAuthenticated: false };
-    }
-    const endpoint = (config === null || config === void 0 ? void 0 : config.authStatusEndpoint) || '/api/auth/status';
-    try {
-        const response = await fetch(endpoint);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        // Check if response is JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            throw new Error('Response is not JSON');
-        }
-        let data;
-        try {
-            data = await response.json();
-        }
-        catch (jsonError) {
-            throw new Error('Invalid JSON response');
-        }
-        return data;
-    }
-    catch (error) {
-        console.error('Auth status check failed:', error);
-        return { isAuthenticated: false };
-    }
-}
-function createAuthStatusEndpoint(handler) {
-    return async function authStatusHandler() {
-        try {
-            const result = await handler();
-            return new Response(JSON.stringify(result), {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-        }
-        catch (error) {
-            console.error('Auth status endpoint error:', error);
-            return new Response(JSON.stringify({ isAuthenticated: false }), {
-                status: 500,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-        }
-    };
-}
-
-/**
- * Server-side helper to get authentication status
- * This should be used in your API route or server components
- */
-async function getAuthStatus(options) {
-    try {
-        const session = await nextAuth.getServerSession(options);
-        return !!(session === null || session === void 0 ? void 0 : session.user);
-    }
-    catch (error) {
-        console.error('Error checking auth status:', error);
-        return false;
-    }
-}
-/**
- * Helper to create a standardized auth status API response
- */
-function createAuthStatusResponse(isAuthenticated) {
-    return {
-        isAuthenticated,
-    };
-}
-/**
- * Middleware helper to check if user is authenticated
- */
-function requireAuth(isAuthenticated, redirectUrl) {
-    if (!isAuthenticated) {
-        if (redirectUrl) {
-            return {
-                redirect: {
-                    destination: redirectUrl,
-                    permanent: false,
-                },
-            };
-        }
-        throw new Error('Authentication required');
-    }
-    return null;
-}
-/**
- * Server component helper that automatically redirects if not authenticated
- */
-async function requireAuthOrRedirect(options, redirectTo = '/signin') {
-    const isAuthenticated = await getAuthStatus(options);
-    if (!isAuthenticated) {
-        navigation.redirect(redirectTo);
-    }
-}
-/**
- * Creates a middleware function for protecting routes
- */
-function createAuthMiddleware(protectedPaths, loginPath = '/signin') {
-    return async function middleware(request) {
-        const { pathname } = request.nextUrl;
-        // Check if the current path should be protected
-        const isProtectedPath = protectedPaths.some(path => pathname.startsWith(path) || pathname === path);
-        if (!isProtectedPath) {
-            return server.NextResponse.next();
-        }
-        // Check authentication status by calling the auth status API
-        try {
-            const authResponse = await fetch(new URL('/api/auth/status', request.url));
-            if (!authResponse.ok) {
-                throw new Error(`Auth API error: ${authResponse.status}`);
-            }
-            // Check if response is JSON
-            const contentType = authResponse.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Auth API response is not JSON');
-            }
-            let authData;
-            try {
-                authData = await authResponse.json();
-            }
-            catch (jsonError) {
-                throw new Error('Invalid JSON response from auth API');
-            }
-            const { isAuthenticated } = authData;
-            if (!isAuthenticated) {
-                const loginUrl = new URL(loginPath, request.url);
-                loginUrl.searchParams.set('callbackUrl', pathname);
-                return server.NextResponse.redirect(loginUrl);
-            }
-        }
-        catch (error) {
-            console.error('Auth middleware error:', error);
-            // If we can't check auth status, redirect to login for security
-            const loginUrl = new URL(loginPath, request.url);
-            loginUrl.searchParams.set('callbackUrl', pathname);
-            return server.NextResponse.redirect(loginUrl);
-        }
-        return server.NextResponse.next();
-    };
-}
-
-exports.checkAuthStatus = checkAuthStatus;
-exports.createAuthMiddleware = createAuthMiddleware;
-exports.createAuthStatusEndpoint = createAuthStatusEndpoint;
-exports.createAuthStatusResponse = createAuthStatusResponse;
-exports.getAuthStatus = getAuthStatus;
-exports.requireAuth = requireAuth;
-exports.requireAuthOrRedirect = requireAuthOrRedirect;
-exports.useAuthStatus = useAuthStatus;
+exports.SessionContextProvider = SessionContextProvider;
+exports.useSession = useSession;
 //# sourceMappingURL=index.js.map
