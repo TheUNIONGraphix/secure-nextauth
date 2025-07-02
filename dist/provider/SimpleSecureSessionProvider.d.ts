@@ -3,5 +3,5 @@ interface SimpleSecureSessionProviderProps {
     children: React.ReactNode;
     isAuthenticated: boolean;
 }
-export declare function SimpleSecureSessionProvider({ children, isAuthenticated }: SimpleSecureSessionProviderProps): import("react/jsx-runtime").JSX.Element;
+export declare function SimpleSecureSessionProvider({ children, isAuthenticated }: SimpleSecureSessionProviderProps): React.ReactNode;
 export {};

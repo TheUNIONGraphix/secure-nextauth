@@ -9,7 +9,7 @@ interface SimpleSecureSessionProviderProps {
 export function SimpleSecureSessionProvider({ 
   children, 
   isAuthenticated 
-}: SimpleSecureSessionProviderProps) {
+}: SimpleSecureSessionProviderProps): React.ReactNode {
   // 서버 사이드에서는 children만 반환
   if (typeof window === 'undefined') {
     return <>{children}</>;

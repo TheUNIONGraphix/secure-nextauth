@@ -3,5 +3,5 @@ interface DynamicSecureSessionProviderProps {
     children: React.ReactNode;
     isAuthenticated: boolean;
 }
-export declare function DynamicSecureSessionProvider({ children, isAuthenticated }: DynamicSecureSessionProviderProps): import("react/jsx-runtime").JSX.Element;
+export declare function DynamicSecureSessionProvider({ children, isAuthenticated }: DynamicSecureSessionProviderProps): React.ReactNode;
 export {};
