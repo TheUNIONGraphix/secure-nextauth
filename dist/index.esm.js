@@ -16,7 +16,7 @@ function SessionContextProvider({ children }) {
     // 인증 상태 확인
     const checkAuthStatus = async () => {
         try {
-            const response = await fetch('/api/status');
+            const response = await fetch('/api/auth/status');
             if (response.ok) {
                 const data = await response.json();
                 setIsAuthenticated(data.isAuthenticated);

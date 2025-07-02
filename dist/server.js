@@ -59,11 +59,8 @@ export const options: NextAuthOptions = {
           userId: credentials.userId,
           password: credentials.password,
         };
-        // const loginUser = await fetch('/api/login', {
-        //   method: 'POST',
-        //   body: JSON.stringify(data),
-        // });
-        return loginUser;
+        // return authSignIn(data.userId, data.password);
+        return null;
       },
     }),
   ],

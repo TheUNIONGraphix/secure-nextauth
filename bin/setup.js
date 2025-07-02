@@ -53,8 +53,7 @@ function generateAuthOptions(options = {}) {
   const structure = detectProjectStructure(projectRoot);
   const baseDir = structure.useSrc ? 'src' : '';
 
-  const authOptionsContent = `import { authSignIn } from '@/actions/auth/auth-service';
-import type { NextAuthOptions, User } from 'next-auth';
+  const authOptionsContent = `import type { NextAuthOptions, User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
 export const authOptions: NextAuthOptions = {
@@ -76,7 +75,8 @@ export const authOptions: NextAuthOptions = {
           userId: credentials.userId,
           password: credentials.password,
         };
-        return authSignIn(data.userId, data.password);
+        // return authSignIn(data.userId, data.password);
+        return null;
       },
     }),
   ],
@@ -173,7 +173,7 @@ function generateSessionContext(options = {}) {
   const baseDir = structure.useSrc ? 'src' : '';
 
   const contextContent = `"use client";
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
 
 interface SessionContextType {
   isAuthenticated: boolean;
@@ -296,15 +296,15 @@ export function SessionContextProvider({ children }: SessionContextProviderProps
   return providerPath;
 }
 
-function generateAuthTypes(options = {}) {
+function generateType(options = {}) {
   const {
     projectRoot = process.cwd()
   } = options;
 
-  const structure = detectProjectStructure(projectRoot);
+  const structure = detectProjectStructure(projectRoot);  
   const baseDir = structure.useSrc ? 'src' : '';
 
-  const typesContent = `import { DefaultSession, DefaultUser } from 'next-auth/next';
+  const typeContent = `import { DefaultSession, DefaultUser } from 'next-auth/next';
 
 declare module 'next-auth' {
   interface Session {
@@ -331,15 +331,15 @@ declare module 'next-auth/jwt' {
 }
 `;
 
-  const typesPath = path.join(projectRoot, baseDir, 'types', 'auth.d.ts');
-  const typesDir = path.dirname(typesPath);
+  const typePath = path.join(projectRoot, baseDir, 'types', 'auth.d.ts');
+  const typeDir = path.dirname(typePath);
 
-  if (!fs.existsSync(typesDir)) {
-    fs.mkdirSync(typesDir, { recursive: true });
+  if (!fs.existsSync(typeDir)) {
+    fs.mkdirSync(typeDir, { recursive: true });
   }
 
-  fs.writeFileSync(typesPath, typesContent);
-  return typesPath;
+  fs.writeFileSync(typePath, typeContent);
+  return typePath;
 }
 
 function autoSetup(options = {}) {
@@ -350,7 +350,7 @@ function autoSetup(options = {}) {
   const authStatusPath = generateAuthStatusAPI(options);
   const contextPath = generateSessionContext(options);
   const providerPath = generateSessionProvider(options);
-  const typesPath = generateAuthTypes(options);
+  const typePath = generateType(options);
   
   console.log('✅ Auto setup completed!');
   console.log(`📁 Project structure: ${structure.useSrc ? 'src/' : ''}app/`);
@@ -359,7 +359,7 @@ function autoSetup(options = {}) {
   console.log(`📁 Auth status API: ${authStatusPath}`);
   console.log(`📁 Session context: ${contextPath}`);
   console.log(`📁 Session provider: ${providerPath}`);
-  console.log(`📁 TypeScript types: ${typesPath}`);
+  console.log(`📁 TypeScript types: ${typePath}`);
   console.log('');
   console.log('📝 Next steps:');
   console.log('1. Install dependencies: npm install next-auth');
@@ -375,29 +375,11 @@ function autoSetup(options = {}) {
     authStatusPath, 
     contextPath, 
     providerPath,
-    typesPath
+    typePath
   };
 }
 
 // CLI 실행
-const args = process.argv.slice(2);
-const options = {};
-
-// 명령행 인수 파싱
-for (let i = 0; i < args.length; i += 2) {
-  const key = args[i];
-  const value = args[i + 1];
-  
-  if (key === '--project-root') {
-    options.projectRoot = value;
-  } else if (key === '--auth-options-path') {
-    options.authOptionsPath = value;
-  }
-}
-
-try {
-  autoSetup(options);
-} catch (error) {
-  console.error('❌ Setup failed:', error.message);
-  process.exit(1);
+if (require.main === module) {
+  autoSetup();
 } 
