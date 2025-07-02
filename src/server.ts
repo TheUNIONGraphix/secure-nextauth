@@ -1,8 +1,4 @@
-// Client-side exports
-export { useAuthStatus } from './hooks/useAuthStatus';
-export { checkAuthStatus, createAuthStatusEndpoint } from './utils/authHelpers';
-
-// Server-side exports
+// Server-side only exports
 export { 
   getAuthStatus, 
   createAuthStatusResponse, 
@@ -11,9 +7,12 @@ export {
   createAuthMiddleware 
 } from './utils/serverHelpers';
 
+// Auto setup utilities (server only)
+export { autoSetup, generateAuthStatusAPI, generateAuthStatusComponent } from './utils/autoSetup';
+
 // Types
 export type { 
   AuthStatusResponse, 
   SecureNextAuthConfig,
   AuthHookResult
-} from './types';
+} from './types'; 
