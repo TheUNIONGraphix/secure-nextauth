@@ -1,6 +1,12 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SessionContextType } from '../types';
+
+interface SessionContextType {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
+}
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
@@ -12,4 +18,4 @@ export const useSession = (): SessionContextType => {
   return context;
 };
 
-export { SessionContext }; 
+export { SessionContext };

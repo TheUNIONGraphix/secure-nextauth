@@ -46,12 +46,13 @@ AUTH_SECRET=your-secret-here
 
 ```
 src/
-├── api/
-│   └── auth/
-│       ├── [...nextauth]/
-│       │   └── route.ts          # NextAuth API 엔드포인트
-│       └── status/
-│           └── route.ts          # 인증 상태 확인 API
+├── app/
+│   └── api/
+│       ├── auth/
+│       │   ├── [...nextauth]/
+│       │   │   └── route.ts      # NextAuth API 엔드포인트
+│       │   └── status/
+│       │       └── route.ts      # 인증 상태 확인 API
 ├── lib/
 │   └── auth.ts                   # NextAuth 설정
 ├── types/
@@ -297,6 +298,11 @@ interface SessionContextType {
 // GET /api/auth/status
 // 응답: { isAuthenticated: boolean }
 ```
+
+### 자동 생성되는 API 경로
+
+- **NextAuth API**: `/api/auth/[...nextauth]` → `src/app/api/auth/[...nextauth]/route.ts`
+- **인증 상태 API**: `/api/auth/status` → `src/app/api/auth/status/route.ts`
 
 ---
 

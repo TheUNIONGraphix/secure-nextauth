@@ -16,7 +16,7 @@ function SessionContextProvider({ children }) {
     // 인증 상태 확인
     const checkAuthStatus = async () => {
         try {
-            const response = await fetch('/api/auth/status');
+            const response = await fetch('/api/status');
             if (response.ok) {
                 const data = await response.json();
                 setIsAuthenticated(data.isAuthenticated);
@@ -33,7 +33,6 @@ function SessionContextProvider({ children }) {
     // 로그인 함수
     const login = async () => {
         try {
-            // NextAuth 로그인 페이지로 리다이렉트
             window.location.href = '/api/auth/signin';
         }
         catch (error) {
@@ -48,7 +47,6 @@ function SessionContextProvider({ children }) {
             });
             if (response.ok) {
                 setIsAuthenticated(false);
-                // 로그아웃 후 홈페이지로 리다이렉트
                 window.location.href = '/';
             }
         }

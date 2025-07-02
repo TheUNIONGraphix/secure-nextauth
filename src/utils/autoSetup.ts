@@ -56,35 +56,72 @@ export function generateAuthOptions(options: AutoSetupOptions = {}) {
   const structure = detectProjectStructure(projectRoot);
   const baseDir = structure.useSrc ? 'src' : '';
 
-  const authOptionsContent = `import { NextAuthOptions } from 'next-auth';
-import GoogleProvider from 'next-auth/providers/google';
+  const authOptionsContent = `import type { NextAuthOptions, User } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
 
-export const authOptions: NextAuthOptions = {
+export const options: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    CredentialsProvider({
+      name: 'Credentials',
+      credentials: {
+        userId: {
+          label: 'userId',
+          type: 'text',
+          placeholder: 'userId',
+        },
+        password: { label: 'password', type: 'password' },
+      },
+      async authorize(credentials): Promise<User | null> {
+        if (!credentials?.userId || !credentials?.password) return null;
+
+        const data = {
+          userId: credentials.userId,
+          password: credentials.password,
+        };
+        // const loginUser = await fetch('/api/login', {
+        //   method: 'POST',
+        //   body: JSON.stringify(data),
+        // });
+        return loginUser;
+      },
     }),
   ],
-  session: {
-    strategy: 'jwt',
-  },
-  secret: process.env.NEXTAUTH_SECRET,
+
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.accessToken = user.accessToken;
+        // token.name = user.name;
+        // token.uuid = user.uuid;
       }
       return token;
     },
+
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-      }
+      session.user = {
+        ...session.user,
+        accessToken: token.accessToken,
+        // name: token.name,
+        // uuid: token.uuid,
+      };
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) return \`\${baseUrl}\${url}\`;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
+    },
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 1 * 24 * 60 * 60 * 30, // 30 days
+  },
+  secret: process.env.AUTH_SECRET,
+  pages: {
+    signIn: '/sign-in',
   },
 };
+
 `;
 
   const libPath = path.join(projectRoot, baseDir, 'lib');
@@ -143,7 +180,7 @@ export function generateSessionContext(options: AutoSetupOptions = {}) {
   const baseDir = structure.useSrc ? 'src' : '';
 
   const contextContent = `"use client";
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
 
 interface SessionContextType {
   isAuthenticated: boolean;
@@ -266,6 +303,52 @@ export function SessionContextProvider({ children }: SessionContextProviderProps
   return providerPath;
 }
 
+export function generateType(options: AutoSetupOptions = {}) {
+  const {
+    projectRoot = process.cwd()
+  } = options;
+
+  const structure = detectProjectStructure(projectRoot);  
+  const baseDir = structure.useSrc ? 'src' : '';
+
+  const typeContent = `import { DefaultSession, DefaultUser } from 'next-auth/next';
+
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      accessToken: string;
+      // name: string;
+      // uuid: string;
+    } & DefaultSession['user'];
+  }
+
+  interface User extends DefaultUser {
+    accessToken: string;
+    // name: string;
+    // uuid: string;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    accessToken: string;
+    // name: string;
+    // uuid: string;
+  }
+}
+`;
+
+  const typePath = path.join(projectRoot, baseDir, 'types', 'auth.d.ts');
+  const typeDir = path.dirname(typePath);
+
+  if (!fs.existsSync(typeDir)) {
+    fs.mkdirSync(typeDir, { recursive: true });
+  }
+
+  fs.writeFileSync(typePath, typeContent);
+  return typePath;
+}
+
 export function autoSetup(options: AutoSetupOptions = {}) {
   const structure = detectProjectStructure(options.projectRoot || process.cwd());
   
@@ -274,6 +357,7 @@ export function autoSetup(options: AutoSetupOptions = {}) {
   const authStatusPath = generateAuthStatusAPI(options);
   const contextPath = generateSessionContext(options);
   const providerPath = generateSessionProvider(options);
+  const typePath = generateType(options);
   
   console.log('✅ Auto setup completed!');
   console.log(`📁 Project structure: ${structure.useSrc ? 'src/' : ''}app/`);
@@ -297,6 +381,7 @@ export function autoSetup(options: AutoSetupOptions = {}) {
     authOptionsPath, 
     authStatusPath, 
     contextPath, 
-    providerPath 
+    providerPath,
+    typePath
   };
 } 

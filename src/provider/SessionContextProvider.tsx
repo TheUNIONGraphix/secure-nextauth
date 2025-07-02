@@ -1,7 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { SessionContext } from '../context/SessionContext';
-import { SessionContextProviderProps, SessionContextType } from '../types';
+
+interface SessionContextProviderProps {
+  children: React.ReactNode;
+}
 
 export function SessionContextProvider({ children }: SessionContextProviderProps) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -26,7 +29,6 @@ export function SessionContextProvider({ children }: SessionContextProviderProps
   // 로그인 함수
   const login = async () => {
     try {
-      // NextAuth 로그인 페이지로 리다이렉트
       window.location.href = '/api/auth/signin';
     } catch (error) {
       console.error('Login failed:', error);
@@ -41,7 +43,6 @@ export function SessionContextProvider({ children }: SessionContextProviderProps
       });
       if (response.ok) {
         setIsAuthenticated(false);
-        // 로그아웃 후 홈페이지로 리다이렉트
         window.location.href = '/';
       }
     } catch (error) {
@@ -53,7 +54,7 @@ export function SessionContextProvider({ children }: SessionContextProviderProps
     checkAuthStatus();
   }, []);
 
-  const value: SessionContextType = {
+  const value = {
     isAuthenticated,
     isLoading,
     login,
@@ -65,4 +66,4 @@ export function SessionContextProvider({ children }: SessionContextProviderProps
       {children}
     </SessionContext.Provider>
   );
-} 
+}

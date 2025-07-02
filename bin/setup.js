@@ -33,7 +33,7 @@ const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
 `;
 
-  const nextAuthPath = path.join(projectRoot, baseDir, 'api', 'auth', '[...nextauth]', 'route.ts');
+  const nextAuthPath = path.join(projectRoot, baseDir, 'app', 'api', 'auth', '[...nextauth]', 'route.ts');
   const nextAuthDir = path.dirname(nextAuthPath);
 
   if (!fs.existsSync(nextAuthDir)) {
@@ -153,7 +153,7 @@ export async function GET() {
 }
 `;
 
-  const authStatusPath = path.join(projectRoot, baseDir, 'api', 'auth', 'status', 'route.ts');
+  const authStatusPath = path.join(projectRoot, baseDir, 'app', 'api', 'auth', 'status', 'route.ts');
   const authStatusDir = path.dirname(authStatusPath);
 
   if (!fs.existsSync(authStatusDir)) {
