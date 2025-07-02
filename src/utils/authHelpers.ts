@@ -79,7 +79,25 @@ export function createAuthMiddleware(
     // Check authentication status by calling the auth status API
     try {
       const authResponse = await fetch(new URL('/api/auth/status', request.url));
-      const { isAuthenticated } = await authResponse.json();
+      
+      if (!authResponse.ok) {
+        throw new Error(`Auth API error: ${authResponse.status}`);
+      }
+      
+      // Check if response is JSON
+      const contentType = authResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Auth API response is not JSON');
+      }
+      
+      let authData;
+      try {
+        authData = await authResponse.json();
+      } catch (jsonError) {
+        throw new Error('Invalid JSON response from auth API');
+      }
+      
+      const { isAuthenticated } = authData;
 
       if (!isAuthenticated) {
         const loginUrl = new URL(loginPath, request.url);

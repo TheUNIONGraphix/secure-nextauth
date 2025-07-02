@@ -20,7 +20,19 @@ export function useAuthStatus(config?: SecureNextAuthConfig) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data: AuthStatusResponse = await response.json();
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Response is not JSON');
+      }
+      
+      let data: AuthStatusResponse;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        throw new Error('Invalid JSON response');
+      }
+      
       const newAuthStatus = data.isAuthenticated;
       
       setIsAuthenticated(newAuthStatus);

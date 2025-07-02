@@ -28,7 +28,18 @@ function useAuthStatus(config) {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const data = await response.json();
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Response is not JSON');
+            }
+            let data;
+            try {
+                data = await response.json();
+            }
+            catch (jsonError) {
+                throw new Error('Invalid JSON response');
+            }
             const newAuthStatus = data.isAuthenticated;
             setIsAuthenticated(newAuthStatus);
             // Call the optional callback
@@ -122,7 +133,22 @@ function createAuthMiddleware(protectedPaths, loginPath = '/signin') {
         // Check authentication status by calling the auth status API
         try {
             const authResponse = await fetch(new URL('/api/auth/status', request.url));
-            const { isAuthenticated } = await authResponse.json();
+            if (!authResponse.ok) {
+                throw new Error(`Auth API error: ${authResponse.status}`);
+            }
+            // Check if response is JSON
+            const contentType = authResponse.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Auth API response is not JSON');
+            }
+            let authData;
+            try {
+                authData = await authResponse.json();
+            }
+            catch (jsonError) {
+                throw new Error('Invalid JSON response from auth API');
+            }
+            const { isAuthenticated } = authData;
             if (!isAuthenticated) {
                 const loginUrl = new URL(loginPath, request.url);
                 loginUrl.searchParams.set('callbackUrl', pathname);
