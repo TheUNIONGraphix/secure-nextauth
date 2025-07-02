@@ -3,6 +3,19 @@
 const fs = require('fs');
 const path = require('path');
 
+function detectProjectStructure(projectRoot) {
+  const hasSrc = fs.existsSync(path.join(projectRoot, 'src'));
+  const hasAppInSrc = hasSrc && fs.existsSync(path.join(projectRoot, 'src', 'app'));
+  const hasAppInRoot = fs.existsSync(path.join(projectRoot, 'app'));
+  
+  return {
+    hasSrc,
+    hasAppInSrc,
+    hasAppInRoot,
+    useSrc: hasSrc && (hasAppInSrc || !hasAppInRoot)
+  };
+}
+
 function generateAuthStatusAPI(options = {}) {
   const {
     projectRoot = process.cwd(),
@@ -10,6 +23,8 @@ function generateAuthStatusAPI(options = {}) {
     authOptionsPath = '@/lib/auth'
   } = options;
 
+  const structure = detectProjectStructure(projectRoot);
+  
   const apiContent = `import { getAuthStatus, createAuthStatusResponse } from 'nextauth-secure';
 import { authOptions } from '${authOptionsPath}';
 
@@ -26,7 +41,9 @@ export async function GET() {
 }
 `;
 
-  const apiPath = path.join(projectRoot, 'app', apiRoute.replace('/api/', ''), 'route.ts');
+  // src 디렉토리 구조 고려
+  const baseDir = structure.useSrc ? 'src' : '';
+  const apiPath = path.join(projectRoot, baseDir, 'app', apiRoute.replace('/api/', ''), 'route.ts');
   const apiDir = path.dirname(apiPath);
 
   // 디렉토리 생성
@@ -46,6 +63,8 @@ function generateAuthStatusComponent(options = {}) {
     componentName = 'AuthStatus'
   } = options;
 
+  const structure = detectProjectStructure(projectRoot);
+
   const componentContent = `"use client";
 import { useAuthStatus } from 'nextauth-secure';
 
@@ -63,7 +82,9 @@ export function ${componentName}() {
 }
 `;
 
-  const componentPath = path.join(projectRoot, 'app', 'components', `${componentName}.tsx`);
+  // src 디렉토리 구조 고려
+  const baseDir = structure.useSrc ? 'src' : '';
+  const componentPath = path.join(projectRoot, baseDir, 'components', `${componentName}.tsx`);
   const componentDir = path.dirname(componentPath);
 
   // 디렉토리 생성
@@ -77,20 +98,60 @@ export function ${componentName}() {
   return componentPath;
 }
 
+function generateNextAuthAPI(options = {}) {
+  const {
+    projectRoot = process.cwd(),
+    authOptionsPath = '@/lib/auth'
+  } = options;
+
+  const structure = detectProjectStructure(projectRoot);
+
+  const nextAuthContent = `import NextAuth from 'next-auth';
+import { authOptions } from '${authOptionsPath}';
+
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };
+`;
+
+  // src 디렉토리 구조 고려
+  const baseDir = structure.useSrc ? 'src' : '';
+  const nextAuthPath = path.join(projectRoot, baseDir, 'app', 'api', 'auth', '[...nextauth]', 'route.ts');
+  const nextAuthDir = path.dirname(nextAuthPath);
+
+  // 디렉토리 생성
+  if (!fs.existsSync(nextAuthDir)) {
+    fs.mkdirSync(nextAuthDir, { recursive: true });
+  }
+
+  // NextAuth API 파일 생성
+  fs.writeFileSync(nextAuthPath, nextAuthContent);
+  
+  return nextAuthPath;
+}
+
 function autoSetup(options = {}) {
+  const structure = detectProjectStructure(options.projectRoot || process.cwd());
+  
   const apiPath = generateAuthStatusAPI(options);
   const componentPath = generateAuthStatusComponent(options);
+  const nextAuthPath = generateNextAuthAPI(options);
   
   console.log('✅ Auto setup completed!');
+  console.log(`📁 Project structure: ${structure.useSrc ? 'src/' : ''}app/`);
   console.log(`📁 API route created: ${apiPath}`);
   console.log(`📁 Component created: ${componentPath}`);
+  console.log(`📁 NextAuth API created: ${nextAuthPath}`);
   console.log('');
   console.log('📝 Next steps:');
-  console.log('1. Import and use the component in your layout or pages');
-  console.log('2. Make sure your authOptions are properly configured');
-  console.log('3. The API route will be available at /api/auth/status');
+  console.log('1. Install next-auth: npm install next-auth');
+  console.log('2. Create authOptions in lib/auth.ts');
+  console.log('3. Import and use the component in your layout or pages');
+  console.log('4. The API routes will be available at:');
+  console.log('   - /api/auth/[...nextauth] (NextAuth)');
+  console.log('   - /api/auth/status (Auth status)');
   
-  return { apiPath, componentPath };
+  return { apiPath, componentPath, nextAuthPath };
 }
 
 // CLI 실행
