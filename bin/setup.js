@@ -53,33 +53,66 @@ function generateAuthOptions(options = {}) {
   const structure = detectProjectStructure(projectRoot);
   const baseDir = structure.useSrc ? 'src' : '';
 
-  const authOptionsContent = `import { NextAuthOptions } from 'next-auth';
-import GoogleProvider from 'next-auth/providers/google';
+  const authOptionsContent = `import { authSignIn } from '@/actions/auth/auth-service';
+import type { NextAuthOptions, User } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    CredentialsProvider({
+      name: 'Credentials',
+      credentials: {
+        userId: {
+          label: 'userId',
+          type: 'text',
+          placeholder: 'userId',
+        },
+        password: { label: 'password', type: 'password' },
+      },
+      async authorize(credentials): Promise<User | null> {
+        if (!credentials?.userId || !credentials?.password) return null;
+
+        const data = {
+          userId: credentials.userId,
+          password: credentials.password,
+        };
+        return authSignIn(data.userId, data.password);
+      },
     }),
   ],
-  session: {
-    strategy: 'jwt',
-  },
-  secret: process.env.NEXTAUTH_SECRET,
+
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.accessToken = user.accessToken;
+        // token.name = user.name;
+        // token.uuid = user.uuid;
       }
       return token;
     },
+
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-      }
+      session.user = {
+        ...session.user,
+        accessToken: token.accessToken,
+        // name: token.name,
+        // uuid: token.uuid,
+      };
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) return \`\${baseUrl}\${url}\`;
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
+    },
+  },
+  session: {
+    strategy: 'jwt',
+    maxAge: 1 * 24 * 60 * 60 * 30, // 30 days
+  },
+  secret: process.env.AUTH_SECRET,
+  pages: {
+    signIn: '/sign-in',
   },
 };
 `;
@@ -263,6 +296,52 @@ export function SessionContextProvider({ children }: SessionContextProviderProps
   return providerPath;
 }
 
+function generateAuthTypes(options = {}) {
+  const {
+    projectRoot = process.cwd()
+  } = options;
+
+  const structure = detectProjectStructure(projectRoot);
+  const baseDir = structure.useSrc ? 'src' : '';
+
+  const typesContent = `import { DefaultSession, DefaultUser } from 'next-auth/next';
+
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      accessToken: string;
+      // name: string;
+      // uuid: string;
+    } & DefaultSession['user'];
+  }
+
+  interface User extends DefaultUser {
+    accessToken: string;
+    // name: string;
+    // uuid: string;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    accessToken: string;
+    // name: string;
+    // uuid: string;
+  }
+}
+`;
+
+  const typesPath = path.join(projectRoot, baseDir, 'types', 'auth.d.ts');
+  const typesDir = path.dirname(typesPath);
+
+  if (!fs.existsSync(typesDir)) {
+    fs.mkdirSync(typesDir, { recursive: true });
+  }
+
+  fs.writeFileSync(typesPath, typesContent);
+  return typesPath;
+}
+
 function autoSetup(options = {}) {
   const structure = detectProjectStructure(options.projectRoot || process.cwd());
   
@@ -271,6 +350,7 @@ function autoSetup(options = {}) {
   const authStatusPath = generateAuthStatusAPI(options);
   const contextPath = generateSessionContext(options);
   const providerPath = generateSessionProvider(options);
+  const typesPath = generateAuthTypes(options);
   
   console.log('✅ Auto setup completed!');
   console.log(`📁 Project structure: ${structure.useSrc ? 'src/' : ''}app/`);
@@ -279,22 +359,23 @@ function autoSetup(options = {}) {
   console.log(`📁 Auth status API: ${authStatusPath}`);
   console.log(`📁 Session context: ${contextPath}`);
   console.log(`📁 Session provider: ${providerPath}`);
+  console.log(`📁 TypeScript types: ${typesPath}`);
   console.log('');
   console.log('📝 Next steps:');
   console.log('1. Install dependencies: npm install next-auth');
   console.log('2. Set up environment variables in .env.local:');
-  console.log('   NEXTAUTH_SECRET=your-secret-here');
-  console.log('   GOOGLE_CLIENT_ID=your-google-client-id');
-  console.log('   GOOGLE_CLIENT_SECRET=your-google-client-secret');
-  console.log('3. Import SessionContextProvider in your layout');
-  console.log('4. Use useSession hook in your components');
+  console.log('   AUTH_SECRET=your-secret-here');
+  console.log('3. Create your auth service: @/actions/auth/auth-service');
+  console.log('4. Import SessionContextProvider in your layout');
+  console.log('5. Use useSession hook in your components');
   
   return { 
     nextAuthPath, 
     authOptionsPath, 
     authStatusPath, 
     contextPath, 
-    providerPath 
+    providerPath,
+    typesPath
   };
 }
 
