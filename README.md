@@ -11,6 +11,8 @@ A secure NextAuth wrapper that prevents session data exposure on the client side
 
 - 본 라이브러리는 React 18~19, Next.js 14~15 환경에서 테스트 및 호환성을 확보했습니다.
 - peerDependencies: `react@^18.0.0 <20.0.0`, `next@^14.0.0 <16.0.0`
+- **번들 최적화**: React, Next.js 모듈을 external로 처리하여 중복 번들링 방지
+- **서버/클라이언트 컴포넌트 호환**: App Router 환경에서 안전한 Context 사용
 - 설치 예시:
 
 ```bash

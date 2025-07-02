@@ -31,5 +31,5 @@ export default {
       declarationDir: 'dist',
     }),
   ],
-  external: ['react', 'react-dom', 'next-auth', 'next/navigation', 'next/server'],
+  external: ['react', 'react-dom', 'next-auth', 'next', 'next/navigation', 'next/server'],
 };
