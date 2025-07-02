@@ -17,3 +17,10 @@ export interface SecureNextAuthConfig {
   authStatusEndpoint?: string;
   onAuthChange?: (isAuthenticated: boolean) => void;
 }
+
+export interface AuthHookResult {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}

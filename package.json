@@ -1,7 +1,7 @@
 {
   "name": "nextauth-secure",
-  "version": "1.0.10",
-  "description": "A secure NextAuth wrapper that prevents session data exposure on the client side",
+  "version": "2.0.0",
+  "description": "A lightweight NextAuth wrapper with React 19/Next.js 15 compatibility - no Context, no Provider, just hooks and utilities",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
