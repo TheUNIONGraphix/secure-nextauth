@@ -1,9 +1,9 @@
 "use client";
-import React, { createContext, useContext } from "react";
+import React from "react";
 import { SecureSessionContextType } from '../types';
 
-// 서버 컴포넌트 호환성을 위한 안전한 Context 생성
-const SecureSessionContext = createContext<SecureSessionContextType>({
+// 더미 Context (호환성을 위해 유지하되 사용하지 않음)
+const SecureSessionContext = React.createContext<SecureSessionContextType>({
   isAuthenticated: false,
 });
 
@@ -15,16 +15,7 @@ export const useSecureSession = (): SecureSessionContextType => {
     return { isAuthenticated: false };
   }
 
-  // 전역 변수에서 먼저 확인
-  if (typeof window !== 'undefined' && (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__ !== undefined) {
-    return { isAuthenticated: (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__ };
-  }
-
-  const context = useContext(SecureSessionContext);
-  if (context === undefined) {
-    // Context가 없으면 전역 변수에서 확인
-    const globalAuthStatus = (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__;
-    return { isAuthenticated: globalAuthStatus || false };
-  }
-  return context;
+  // 전역 변수에서 인증 상태 확인
+  const globalAuthStatus = (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__;
+  return { isAuthenticated: globalAuthStatus || false };
 };

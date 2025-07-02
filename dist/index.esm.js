@@ -1,46 +1,21 @@
 import { jsx, Fragment } from 'react/jsx-runtime';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
 
-// 서버 컴포넌트 호환성을 위한 안전한 Context 생성
-const SecureSessionContext = createContext({
-    isAuthenticated: false,
-});
-const useSecureSession = () => {
-    // 서버 사이드에서는 기본값 반환
-    if (typeof window === 'undefined') {
-        return { isAuthenticated: false };
-    }
-    // 전역 변수에서 먼저 확인
-    if (typeof window !== 'undefined' && window.__NEXTAUTH_SECURE_AUTH_STATUS__ !== undefined) {
-        return { isAuthenticated: window.__NEXTAUTH_SECURE_AUTH_STATUS__ };
-    }
-    const context = useContext(SecureSessionContext);
-    if (context === undefined) {
-        // Context가 없으면 전역 변수에서 확인
-        const globalAuthStatus = window.__NEXTAUTH_SECURE_AUTH_STATUS__;
-        return { isAuthenticated: globalAuthStatus || false };
-    }
-    return context;
-};
-
-// 서버 컴포넌트 호환성을 위한 동적 import 지원
+// Context 없이 전역 변수만 사용하는 Provider
 function SecureSessionProvider({ children, isAuthenticated }) {
-    // 클라이언트에서만 Context를 사용하도록 보장
+    // 서버 사이드에서는 children만 반환
     if (typeof window === 'undefined') {
-        // 서버 사이드에서는 children만 반환
         return jsx(Fragment, { children: children });
     }
-    return (jsx(SecureSessionContext.Provider, { value: { isAuthenticated }, children: children }));
+    // 클라이언트에서만 전역 변수 설정
+    if (typeof window !== 'undefined') {
+        window.__NEXTAUTH_SECURE_AUTH_STATUS__ = isAuthenticated;
+    }
+    return jsx(Fragment, { children: children });
 }
-
-var SecureSessionProvider$1 = /*#__PURE__*/Object.freeze({
-    __proto__: null,
-    SecureSessionProvider: SecureSessionProvider,
-    default: SecureSessionProvider
-});
 
 // 서버 컴포넌트에서 안전하게 사용할 수 있는 래퍼
 function DynamicSecureSessionProvider({ children, isAuthenticated }) {
@@ -48,13 +23,13 @@ function DynamicSecureSessionProvider({ children, isAuthenticated }) {
     if (typeof window === 'undefined') {
         return jsx(Fragment, { children: children });
     }
-    // 클라이언트에서만 동적 import
+    // 클라이언트에서만 동적 import (SimpleSecureSessionProvider 사용)
     const [Provider, setProvider] = React.useState(null);
     React.useEffect(() => {
-        Promise.resolve().then(function () { return SecureSessionProvider$1; }).then((module) => {
-            setProvider(() => module.default || module.SecureSessionProvider);
+        Promise.resolve().then(function () { return SimpleSecureSessionProvider$1; }).then((module) => {
+            setProvider(() => module.SimpleSecureSessionProvider);
         }).catch((error) => {
-            console.error('Failed to load SecureSessionProvider:', error);
+            console.error('Failed to load SimpleSecureSessionProvider:', error);
         });
     }, []);
     if (!Provider) {
@@ -76,6 +51,11 @@ function SimpleSecureSessionProvider({ children, isAuthenticated }) {
     }
     return jsx(Fragment, { children: children });
 }
+
+var SimpleSecureSessionProvider$1 = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    SimpleSecureSessionProvider: SimpleSecureSessionProvider
+});
 
 function useAuthStatus(config) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -150,6 +130,20 @@ function useAuthStatus(config) {
         refetch: checkAuthStatus,
     };
 }
+
+// 더미 Context (호환성을 위해 유지하되 사용하지 않음)
+React.createContext({
+    isAuthenticated: false,
+});
+const useSecureSession = () => {
+    // 서버 사이드에서는 기본값 반환
+    if (typeof window === 'undefined') {
+        return { isAuthenticated: false };
+    }
+    // 전역 변수에서 인증 상태 확인
+    const globalAuthStatus = window.__NEXTAUTH_SECURE_AUTH_STATUS__;
+    return { isAuthenticated: globalAuthStatus || false };
+};
 
 async function checkAuthStatus(config) {
     // 서버 사이드에서는 기본값 반환

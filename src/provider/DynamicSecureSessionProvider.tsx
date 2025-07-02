@@ -15,14 +15,14 @@ export function DynamicSecureSessionProvider({
     return <>{children}</>;
   }
 
-  // 클라이언트에서만 동적 import
+  // 클라이언트에서만 동적 import (SimpleSecureSessionProvider 사용)
   const [Provider, setProvider] = React.useState<React.ComponentType<any> | null>(null);
 
   React.useEffect(() => {
-    import('./SecureSessionProvider').then((module) => {
-      setProvider(() => module.default || module.SecureSessionProvider);
+    import('./SimpleSecureSessionProvider').then((module) => {
+      setProvider(() => module.SimpleSecureSessionProvider);
     }).catch((error) => {
-      console.error('Failed to load SecureSessionProvider:', error);
+      console.error('Failed to load SimpleSecureSessionProvider:', error);
     });
   }, []);
 

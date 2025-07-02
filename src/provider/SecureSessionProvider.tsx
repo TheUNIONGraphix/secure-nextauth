@@ -1,25 +1,24 @@
 "use client";
 import React from "react";
-import { SecureSessionContext } from '../context/SecureSessionContext';
 
 interface SecureSessionProviderProps {
   children: React.ReactNode;
   isAuthenticated: boolean;
 }
 
-// 서버 컴포넌트 호환성을 위한 동적 import 지원
+// Context 없이 전역 변수만 사용하는 Provider
 export function SecureSessionProvider({ children, isAuthenticated }: SecureSessionProviderProps): React.ReactNode {
-  // 클라이언트에서만 Context를 사용하도록 보장
+  // 서버 사이드에서는 children만 반환
   if (typeof window === 'undefined') {
-    // 서버 사이드에서는 children만 반환
     return <>{children}</>;
   }
 
-  return (
-    <SecureSessionContext.Provider value={{ isAuthenticated }}>
-      {children}
-    </SecureSessionContext.Provider>
-  );
+  // 클라이언트에서만 전역 변수 설정
+  if (typeof window !== 'undefined') {
+    (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__ = isAuthenticated;
+  }
+
+  return <>{children}</>;
 }
 
 // 동적 import를 위한 별도 export
