@@ -4,4 +4,4 @@ interface SecureSessionProviderProps {
     isAuthenticated: boolean;
 }
 export declare function SecureSessionProvider({ children, isAuthenticated }: SecureSessionProviderProps): import("react/jsx-runtime").JSX.Element;
-export {};
+export default SecureSessionProvider;

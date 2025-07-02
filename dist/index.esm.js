@@ -1,5 +1,5 @@
 import { jsx, Fragment } from 'react/jsx-runtime';
-import { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
@@ -13,9 +13,15 @@ const useSecureSession = () => {
     if (typeof window === 'undefined') {
         return { isAuthenticated: false };
     }
+    // 전역 변수에서 먼저 확인
+    if (typeof window !== 'undefined' && window.__NEXTAUTH_SECURE_AUTH_STATUS__ !== undefined) {
+        return { isAuthenticated: window.__NEXTAUTH_SECURE_AUTH_STATUS__ };
+    }
     const context = useContext(SecureSessionContext);
     if (context === undefined) {
-        throw new Error('useSecureSession must be used within a SecureSessionProvider');
+        // Context가 없으면 전역 변수에서 확인
+        const globalAuthStatus = window.__NEXTAUTH_SECURE_AUTH_STATUS__;
+        return { isAuthenticated: globalAuthStatus || false };
     }
     return context;
 };
@@ -28,6 +34,47 @@ function SecureSessionProvider({ children, isAuthenticated }) {
         return jsx(Fragment, { children: children });
     }
     return (jsx(SecureSessionContext.Provider, { value: { isAuthenticated }, children: children }));
+}
+
+var SecureSessionProvider$1 = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    SecureSessionProvider: SecureSessionProvider,
+    default: SecureSessionProvider
+});
+
+// 서버 컴포넌트에서 안전하게 사용할 수 있는 래퍼
+function DynamicSecureSessionProvider({ children, isAuthenticated }) {
+    // 서버 사이드에서는 children만 반환
+    if (typeof window === 'undefined') {
+        return jsx(Fragment, { children: children });
+    }
+    // 클라이언트에서만 동적 import
+    const [Provider, setProvider] = React.useState(null);
+    React.useEffect(() => {
+        Promise.resolve().then(function () { return SecureSessionProvider$1; }).then((module) => {
+            setProvider(() => module.default || module.SecureSessionProvider);
+        }).catch((error) => {
+            console.error('Failed to load SecureSessionProvider:', error);
+        });
+    }, []);
+    if (!Provider) {
+        // Provider가 로드되지 않았으면 children만 반환
+        return jsx(Fragment, { children: children });
+    }
+    return jsx(Provider, { isAuthenticated: isAuthenticated, children: children });
+}
+
+// Context 없이 작동하는 간단한 Provider
+function SimpleSecureSessionProvider({ children, isAuthenticated }) {
+    // 서버 사이드에서는 children만 반환
+    if (typeof window === 'undefined') {
+        return jsx(Fragment, { children: children });
+    }
+    // 클라이언트에서만 인증 상태를 전역 변수로 설정
+    if (typeof window !== 'undefined') {
+        window.__NEXTAUTH_SECURE_AUTH_STATUS__ = isAuthenticated;
+    }
+    return jsx(Fragment, { children: children });
 }
 
 function useAuthStatus(config) {
@@ -44,6 +91,16 @@ function useAuthStatus(config) {
         try {
             setIsLoading(true);
             setError(null);
+            // 먼저 전역 변수에서 확인
+            if (typeof window !== 'undefined' && window.__NEXTAUTH_SECURE_AUTH_STATUS__ !== undefined) {
+                const globalAuthStatus = window.__NEXTAUTH_SECURE_AUTH_STATUS__;
+                setIsAuthenticated(globalAuthStatus);
+                if (config === null || config === void 0 ? void 0 : config.onAuthChange) {
+                    config.onAuthChange(globalAuthStatus);
+                }
+                setIsLoading(false);
+                return;
+            }
             const response = await fetch(endpoint);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -62,6 +119,10 @@ function useAuthStatus(config) {
             }
             const newAuthStatus = data.isAuthenticated;
             setIsAuthenticated(newAuthStatus);
+            // 전역 변수에도 저장
+            if (typeof window !== 'undefined') {
+                window.__NEXTAUTH_SECURE_AUTH_STATUS__ = newAuthStatus;
+            }
             // Call the optional callback
             if (config === null || config === void 0 ? void 0 : config.onAuthChange) {
                 config.onAuthChange(newAuthStatus);
@@ -237,5 +298,5 @@ function createAuthMiddleware(protectedPaths, loginPath = '/signin') {
     };
 }
 
-export { SecureSessionProvider, checkAuthStatus, createAuthMiddleware, createAuthStatusEndpoint, createAuthStatusResponse, getAuthStatus, requireAuth, requireAuthOrRedirect, useAuthStatus, useSecureSession };
+export { DynamicSecureSessionProvider, SecureSessionProvider, SimpleSecureSessionProvider, checkAuthStatus, createAuthMiddleware, createAuthStatusEndpoint, createAuthStatusResponse, getAuthStatus, requireAuth, requireAuthOrRedirect, useAuthStatus, useSecureSession };
 //# sourceMappingURL=index.esm.js.map

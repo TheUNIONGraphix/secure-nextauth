@@ -21,3 +21,6 @@ export function SecureSessionProvider({ children, isAuthenticated }: SecureSessi
     </SecureSessionContext.Provider>
   );
 }
+
+// 동적 import를 위한 별도 export
+export default SecureSessionProvider;

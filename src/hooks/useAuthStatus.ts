@@ -20,6 +20,17 @@ export function useAuthStatus(config?: SecureNextAuthConfig) {
       setIsLoading(true);
       setError(null);
       
+      // 먼저 전역 변수에서 확인
+      if (typeof window !== 'undefined' && (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__ !== undefined) {
+        const globalAuthStatus = (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__;
+        setIsAuthenticated(globalAuthStatus);
+        if (config?.onAuthChange) {
+          config.onAuthChange(globalAuthStatus);
+        }
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await fetch(endpoint);
       
       if (!response.ok) {
@@ -42,6 +53,11 @@ export function useAuthStatus(config?: SecureNextAuthConfig) {
       const newAuthStatus = data.isAuthenticated;
       
       setIsAuthenticated(newAuthStatus);
+      
+      // 전역 변수에도 저장
+      if (typeof window !== 'undefined') {
+        (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__ = newAuthStatus;
+      }
       
       // Call the optional callback
       if (config?.onAuthChange) {

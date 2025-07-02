@@ -15,9 +15,16 @@ export const useSecureSession = (): SecureSessionContextType => {
     return { isAuthenticated: false };
   }
 
+  // 전역 변수에서 먼저 확인
+  if (typeof window !== 'undefined' && (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__ !== undefined) {
+    return { isAuthenticated: (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__ };
+  }
+
   const context = useContext(SecureSessionContext);
   if (context === undefined) {
-    throw new Error('useSecureSession must be used within a SecureSessionProvider');
+    // Context가 없으면 전역 변수에서 확인
+    const globalAuthStatus = (window as any).__NEXTAUTH_SECURE_AUTH_STATUS__;
+    return { isAuthenticated: globalAuthStatus || false };
   }
   return context;
 };

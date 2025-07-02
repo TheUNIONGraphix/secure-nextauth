@@ -1,13 +1,13 @@
 'use strict';
 
 var jsxRuntime = require('react/jsx-runtime');
-var react = require('react');
+var React = require('react');
 var nextAuth = require('next-auth');
 var navigation = require('next/navigation');
 var server = require('next/server');
 
 // 서버 컴포넌트 호환성을 위한 안전한 Context 생성
-const SecureSessionContext = react.createContext({
+const SecureSessionContext = React.createContext({
     isAuthenticated: false,
 });
 const useSecureSession = () => {
@@ -15,9 +15,15 @@ const useSecureSession = () => {
     if (typeof window === 'undefined') {
         return { isAuthenticated: false };
     }
-    const context = react.useContext(SecureSessionContext);
+    // 전역 변수에서 먼저 확인
+    if (typeof window !== 'undefined' && window.__NEXTAUTH_SECURE_AUTH_STATUS__ !== undefined) {
+        return { isAuthenticated: window.__NEXTAUTH_SECURE_AUTH_STATUS__ };
+    }
+    const context = React.useContext(SecureSessionContext);
     if (context === undefined) {
-        throw new Error('useSecureSession must be used within a SecureSessionProvider');
+        // Context가 없으면 전역 변수에서 확인
+        const globalAuthStatus = window.__NEXTAUTH_SECURE_AUTH_STATUS__;
+        return { isAuthenticated: globalAuthStatus || false };
     }
     return context;
 };
@@ -32,10 +38,51 @@ function SecureSessionProvider({ children, isAuthenticated }) {
     return (jsxRuntime.jsx(SecureSessionContext.Provider, { value: { isAuthenticated }, children: children }));
 }
 
+var SecureSessionProvider$1 = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    SecureSessionProvider: SecureSessionProvider,
+    default: SecureSessionProvider
+});
+
+// 서버 컴포넌트에서 안전하게 사용할 수 있는 래퍼
+function DynamicSecureSessionProvider({ children, isAuthenticated }) {
+    // 서버 사이드에서는 children만 반환
+    if (typeof window === 'undefined') {
+        return jsxRuntime.jsx(jsxRuntime.Fragment, { children: children });
+    }
+    // 클라이언트에서만 동적 import
+    const [Provider, setProvider] = React.useState(null);
+    React.useEffect(() => {
+        Promise.resolve().then(function () { return SecureSessionProvider$1; }).then((module) => {
+            setProvider(() => module.default || module.SecureSessionProvider);
+        }).catch((error) => {
+            console.error('Failed to load SecureSessionProvider:', error);
+        });
+    }, []);
+    if (!Provider) {
+        // Provider가 로드되지 않았으면 children만 반환
+        return jsxRuntime.jsx(jsxRuntime.Fragment, { children: children });
+    }
+    return jsxRuntime.jsx(Provider, { isAuthenticated: isAuthenticated, children: children });
+}
+
+// Context 없이 작동하는 간단한 Provider
+function SimpleSecureSessionProvider({ children, isAuthenticated }) {
+    // 서버 사이드에서는 children만 반환
+    if (typeof window === 'undefined') {
+        return jsxRuntime.jsx(jsxRuntime.Fragment, { children: children });
+    }
+    // 클라이언트에서만 인증 상태를 전역 변수로 설정
+    if (typeof window !== 'undefined') {
+        window.__NEXTAUTH_SECURE_AUTH_STATUS__ = isAuthenticated;
+    }
+    return jsxRuntime.jsx(jsxRuntime.Fragment, { children: children });
+}
+
 function useAuthStatus(config) {
-    const [isAuthenticated, setIsAuthenticated] = react.useState(false);
-    const [isLoading, setIsLoading] = react.useState(true);
-    const [error, setError] = react.useState(null);
+    const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [error, setError] = React.useState(null);
     const endpoint = (config === null || config === void 0 ? void 0 : config.authStatusEndpoint) || '/api/auth/status';
     const checkAuthStatus = async () => {
         // 서버 사이드에서는 실행하지 않음
@@ -46,6 +93,16 @@ function useAuthStatus(config) {
         try {
             setIsLoading(true);
             setError(null);
+            // 먼저 전역 변수에서 확인
+            if (typeof window !== 'undefined' && window.__NEXTAUTH_SECURE_AUTH_STATUS__ !== undefined) {
+                const globalAuthStatus = window.__NEXTAUTH_SECURE_AUTH_STATUS__;
+                setIsAuthenticated(globalAuthStatus);
+                if (config === null || config === void 0 ? void 0 : config.onAuthChange) {
+                    config.onAuthChange(globalAuthStatus);
+                }
+                setIsLoading(false);
+                return;
+            }
             const response = await fetch(endpoint);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -64,6 +121,10 @@ function useAuthStatus(config) {
             }
             const newAuthStatus = data.isAuthenticated;
             setIsAuthenticated(newAuthStatus);
+            // 전역 변수에도 저장
+            if (typeof window !== 'undefined') {
+                window.__NEXTAUTH_SECURE_AUTH_STATUS__ = newAuthStatus;
+            }
             // Call the optional callback
             if (config === null || config === void 0 ? void 0 : config.onAuthChange) {
                 config.onAuthChange(newAuthStatus);
@@ -78,7 +139,7 @@ function useAuthStatus(config) {
             setIsLoading(false);
         }
     };
-    react.useEffect(() => {
+    React.useEffect(() => {
         // 클라이언트에서만 실행
         if (typeof window !== 'undefined') {
             checkAuthStatus();
@@ -239,7 +300,9 @@ function createAuthMiddleware(protectedPaths, loginPath = '/signin') {
     };
 }
 
+exports.DynamicSecureSessionProvider = DynamicSecureSessionProvider;
 exports.SecureSessionProvider = SecureSessionProvider;
+exports.SimpleSecureSessionProvider = SimpleSecureSessionProvider;
 exports.checkAuthStatus = checkAuthStatus;
 exports.createAuthMiddleware = createAuthMiddleware;
 exports.createAuthStatusEndpoint = createAuthStatusEndpoint;
