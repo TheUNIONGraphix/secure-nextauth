@@ -1,5 +1,6 @@
-export { SecureSessionContext, useSecureSession } from './context/SecureSessionContext';
-export { useAuthStatus } from './hooks/useAuthStatus';
 export { SecureSessionProvider } from './provider/SecureSessionProvider';
-export { getAuthStatus, createAuthStatusResponse, requireAuth, requireAuthOrRedirect, createAuthMiddleware } from './utils/authHelpers';
-export type { SecureSessionContextType, SecureSessionProviderProps, AuthStatusResponse, SecureNextAuthConfig, } from './types';
+export { useAuthStatus } from './hooks/useAuthStatus';
+export { useSecureSession } from './context/SecureSessionContext';
+export { checkAuthStatus, createAuthStatusEndpoint } from './utils/authHelpers';
+export { getAuthStatus, createAuthStatusResponse, requireAuth, requireAuthOrRedirect, createAuthMiddleware } from './utils/serverHelpers';
+export type { SecureSessionContextType, AuthStatusResponse, SecureNextAuthConfig } from './types';

@@ -10,6 +10,12 @@ export function useAuthStatus(config?: SecureNextAuthConfig) {
   const endpoint = config?.authStatusEndpoint || '/api/auth/status';
 
   const checkAuthStatus = async () => {
+    // 서버 사이드에서는 실행하지 않음
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -51,7 +57,10 @@ export function useAuthStatus(config?: SecureNextAuthConfig) {
   };
 
   useEffect(() => {
-    checkAuthStatus();
+    // 클라이언트에서만 실행
+    if (typeof window !== 'undefined') {
+      checkAuthStatus();
+    }
   }, [endpoint]);
 
   return {

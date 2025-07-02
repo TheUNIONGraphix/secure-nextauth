@@ -1,13 +1,18 @@
+import { jsx, Fragment } from 'react/jsx-runtime';
 import { createContext, useContext, useState, useEffect } from 'react';
-import { jsx } from 'react/jsx-runtime';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
 
+// 서버 컴포넌트 호환성을 위한 안전한 Context 생성
 const SecureSessionContext = createContext({
     isAuthenticated: false,
 });
 const useSecureSession = () => {
+    // 서버 사이드에서는 기본값 반환
+    if (typeof window === 'undefined') {
+        return { isAuthenticated: false };
+    }
     const context = useContext(SecureSessionContext);
     if (context === undefined) {
         throw new Error('useSecureSession must be used within a SecureSessionProvider');
@@ -15,12 +20,27 @@ const useSecureSession = () => {
     return context;
 };
 
+// 서버 컴포넌트 호환성을 위한 동적 import 지원
+function SecureSessionProvider({ children, isAuthenticated }) {
+    // 클라이언트에서만 Context를 사용하도록 보장
+    if (typeof window === 'undefined') {
+        // 서버 사이드에서는 children만 반환
+        return jsx(Fragment, { children: children });
+    }
+    return (jsx(SecureSessionContext.Provider, { value: { isAuthenticated }, children: children }));
+}
+
 function useAuthStatus(config) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const endpoint = (config === null || config === void 0 ? void 0 : config.authStatusEndpoint) || '/api/auth/status';
     const checkAuthStatus = async () => {
+        // 서버 사이드에서는 실행하지 않음
+        if (typeof window === 'undefined') {
+            setIsLoading(false);
+            return;
+        }
         try {
             setIsLoading(true);
             setError(null);
@@ -57,7 +77,10 @@ function useAuthStatus(config) {
         }
     };
     useEffect(() => {
-        checkAuthStatus();
+        // 클라이언트에서만 실행
+        if (typeof window !== 'undefined') {
+            checkAuthStatus();
+        }
     }, [endpoint]);
     return {
         isAuthenticated,
@@ -67,8 +90,56 @@ function useAuthStatus(config) {
     };
 }
 
-function SecureSessionProvider({ children, isAuthenticated }) {
-    return (jsx(SecureSessionContext.Provider, { value: { isAuthenticated }, children: children }));
+async function checkAuthStatus(config) {
+    // 서버 사이드에서는 기본값 반환
+    if (typeof window === 'undefined') {
+        return { isAuthenticated: false };
+    }
+    const endpoint = (config === null || config === void 0 ? void 0 : config.authStatusEndpoint) || '/api/auth/status';
+    try {
+        const response = await fetch(endpoint);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Response is not JSON');
+        }
+        let data;
+        try {
+            data = await response.json();
+        }
+        catch (jsonError) {
+            throw new Error('Invalid JSON response');
+        }
+        return data;
+    }
+    catch (error) {
+        console.error('Auth status check failed:', error);
+        return { isAuthenticated: false };
+    }
+}
+function createAuthStatusEndpoint(handler) {
+    return async function authStatusHandler() {
+        try {
+            const result = await handler();
+            return new Response(JSON.stringify(result), {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+        }
+        catch (error) {
+            console.error('Auth status endpoint error:', error);
+            return new Response(JSON.stringify({ isAuthenticated: false }), {
+                status: 500,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+        }
+    };
 }
 
 /**
@@ -166,5 +237,5 @@ function createAuthMiddleware(protectedPaths, loginPath = '/signin') {
     };
 }
 
-export { SecureSessionContext, SecureSessionProvider, createAuthMiddleware, createAuthStatusResponse, getAuthStatus, requireAuth, requireAuthOrRedirect, useAuthStatus, useSecureSession };
+export { SecureSessionProvider, checkAuthStatus, createAuthMiddleware, createAuthStatusEndpoint, createAuthStatusResponse, getAuthStatus, requireAuth, requireAuthOrRedirect, useAuthStatus, useSecureSession };
 //# sourceMappingURL=index.esm.js.map

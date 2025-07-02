@@ -1,4 +1,5 @@
 import React from "react";
 import { SecureSessionContextType } from '../types';
-export declare const SecureSessionContext: React.Context<SecureSessionContextType>;
+declare const SecureSessionContext: React.Context<SecureSessionContextType>;
+export { SecureSessionContext };
 export declare const useSecureSession: () => SecureSessionContextType;
